@@ -157,15 +157,24 @@ def processRally(rally, match_name, k, num_of_feats):
             if event[3] in [3,5,7,9,11]:    #pt
                 shot_start_loc = [ int(rally[frame_idx][0].get('x')), int(rally[frame_idx][0].get('y')) ]
                 shot_end_loc = [ int(rally[frame_idx_1][1].get('x')), int(rally[frame_idx_1][1].get('y')) ]
-                baseline_ratio = ( int(rally[frame_idx_1][0].get('y')) - baseline_pt ) / ( baseline_pb - int(rally[frame_idx_1][1].get('y')) )
-                lateral_movement_ratio = lateral_movement_fn(rally, frame_idx, frame_idx_1)
+                try:
+                    baseline_ratio = ( int(rally[frame_idx_1][0].get('y')) - baseline_pt ) / ( baseline_pb - int(rally[frame_idx_1][1].get('y')) )
+                    lateral_movement_ratio = lateral_movement_fn(rally, frame_idx, frame_idx_1)
+                except ZeroDivisionError:
+                    return None
+
                 shot_theta = abs( angle(shot_start_loc[0], shot_start_loc[1], shot_end_loc[0], shot_end_loc[1]) )
 
             else:   #pb
                 shot_start_loc = [ int(rally[frame_idx][1].get('x')), int(rally[frame_idx][1].get('y')) ]
                 shot_end_loc = [ int(rally[frame_idx_1][0].get('x')), int(rally[frame_idx_1][0].get('y')) ]
-                baseline_ratio = ( ( baseline_pb - int(rally[frame_idx_1][1].get('y')) / int(rally[frame_idx_1][0].get('y')) - baseline_pt ) )
-                lateral_movement_ratio = 1. / lateral_movement_fn(rally, frame_idx, frame_idx_1)
+
+                try:
+                    baseline_ratio = ( ( baseline_pb - int(rally[frame_idx_1][1].get('y')) / int(rally[frame_idx_1][0].get('y')) - baseline_pt ) )
+                    lateral_movement_ratio = 1. / lateral_movement_fn(rally, frame_idx, frame_idx_1)
+                except ZeroDivisionError:
+                    return None
+
                 shot_theta = abs( angle(shot_start_loc[0], shot_start_loc[1], shot_end_loc[0], shot_end_loc[1]) )
 
 
@@ -236,7 +245,7 @@ train_matches = [
 'Na-Fasungova-GrpD-LondonOlympics-2012',
 'Nehwal-Xin-Bronze-LondonOlympics-2012',
 'Nguyen-Parupalli-GrpD-LondonOlympics-2012',
-'Nguyen-Tan-GrpD-LoxndonOlympics-2012',
+'Nguyen-Tan-GrpD-LondonOlympics-2012',
 'Sasaki-Cordon-R16-LondonOlympics-2012',
 'Sasaki-Soeroredjo-GrpN-LondonOlympics-2012',
 'Shenck-Gavnholt-GrpN-LondonOlympics-2012',
