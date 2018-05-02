@@ -178,8 +178,7 @@ def processRally(rally, match_name, k, num_of_feats):
                 shot_theta = abs( angle(shot_start_loc[0], shot_start_loc[1], shot_end_loc[0], shot_end_loc[1]) )
 
 
-            # include shot start location, angle with the center line
-            # pt, pb, shot_speed, shot_end_loc, shot_type, baseline_ratio, lateral_movement_ratio
+            # pt, pb, shot_speed, shot_end_loc, shot_type, baseline_ratio, lateral_movement_ratio, abs angle with the center line
             shot_feats = np.array([[ int(rally[frame_idx][0].get('x')), int(rally[frame_idx][0].get('y')), \
                 int(rally[frame_idx][1].get('x')), int(rally[frame_idx][1].get('y')), \
                 shot_speed, \
