@@ -34,9 +34,9 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as plticker
 from pykalman import KalmanFilter
 
-pkl_base_pth = '/users/rakesh.jasti/badminton/BadmintonDatasetFull/event_det/pkl'
-xml_in_p = '/users/rakesh.jasti/badminton/Homo/xml/edit'
-event_feat_pkl_p = '/users/rakesh.jasti/badminton/BadmintonDatasetFull/event_feat'
+pkl_base_pth = './data/event_det/pkl'
+xml_in_p = './data/edit'
+event_feat_pkl_p = './data/event_feat'
 
 baseline_pt = 134
 baseline_pb = 1407
@@ -86,7 +86,7 @@ def apply_kalman_physics_model(coordinates, vis_name='test', vis=False):
             times, smoothed_state_means[:, 2], 'r--',)
         fig.savefig('vis_outputs/'+vis_name+'.png')
         plt.close(fig)
-    
+
     # if avg_speed > max_avg_speed:
     #     print vis_name,
     #     print 'speed: {}'.format(avg_speed)
@@ -109,8 +109,8 @@ def lateral_movement_fn(rally, frame_idx, frame_idx_1):
 def angle(x1,y1, x2, y2):
     if x1==x2:
         return 90
-    m = (y2-y1) / float(x2-x1) 
-    
+    m = (y2-y1) / float(x2-x1)
+
     return math.atan(m) *180/math.pi
 
 def processRally(rally, match_name, k, num_of_feats):
@@ -149,10 +149,10 @@ def processRally(rally, match_name, k, num_of_feats):
                 frame_idx_1 = min(frame_idx_1, len(rally)-1)
             else:
                 frame_idx_1 = (event_preds[i+1][0]+event_preds[i+1][1])/2+1
-            
+
             # shot speed (frame id diff)
             shot_speed = frame_idx_1 - frame_idx
-            
+
             # shot end loc, Baseline distance ratio, Lateral player movement ratio
             if event[3] in [3,5,7,9,11]:    #pt
                 shot_start_loc = [ int(rally[frame_idx][0].get('x')), int(rally[frame_idx][0].get('y')) ]
@@ -178,7 +178,7 @@ def processRally(rally, match_name, k, num_of_feats):
                 shot_theta = abs( angle(shot_start_loc[0], shot_start_loc[1], shot_end_loc[0], shot_end_loc[1]) )
 
 
-            # pt, pb, shot_speed, shot_end_loc, shot_type, baseline_ratio, lateral_movement_ratio, abs angle with the center line
+            # pt, pb, shot_speed, shot_end_loc, abs angle with the center line, shot_type, baseline_ratio, lateral_movement_ratio,
             shot_feats = np.array([[ int(rally[frame_idx][0].get('x')), int(rally[frame_idx][0].get('y')), \
                 int(rally[frame_idx][1].get('x')), int(rally[frame_idx][1].get('y')), \
                 shot_speed, \
@@ -199,31 +199,44 @@ def processRally(rally, match_name, k, num_of_feats):
     rally_data = np.empty((0, num_of_feats*(k)), float)
     for i, feats in enumerate(event_feats[k-1:,:], k-1):
         shot_data = event_feats[i].tolist()
-        
+
         for j in range(1, k):
             shot_data = shot_data + event_feats[i-j, :].tolist()
-        
+
         rally_data = np.vstack(( rally_data, np.asarray(shot_data).reshape(1,num_of_feats*(k)) ))
-    
+
     # add Y to the data
     rally_data = np.hstack((rally_data, np.ones((rally_data.shape[0],1))*label))
 
     return rally_data
+
+def par_helper(x):
+    rally, match_name, k, num_of_feats = x
+    rally_data = processRally(rally, match_name, k, num_of_feats)
+    return rally_data
+    #if rally_data is not None:
+    #    match_feats = np.vstack(( match_feats, rally_data ))
 
 def processMatch(match_name, k, num_of_feats):
     print match_name
 
     match_xml_p = os.path.join(xml_in_p, match_name+'.xml')
     match_xml = ET.parse(match_xml_p).getroot()
-    
+
     match_feats = np.empty((0, num_of_feats*(k)+1), float)
 
-    for i, rally in enumerate(match_xml):
+    par_list = [ (rally, match_name, k, num_of_feats) for i, rally in enumerate(match_xml) ]
+    pool = ThreadPool(6)
+    results = pool.map(par_helper, par_list)
+    pool.close()
+    pool.join()
+
+    for result in results:
+        if result is not None:
+            match_feats = np.vstack(( match_feats, result ))
+    #for i, rally in enumerate(match_xml):
         # if i > 1:
         #     break
-        rally_data = processRally(rally, match_name, k, num_of_feats)
-        if rally_data is not None:
-            match_feats = np.vstack(( match_feats, rally_data ))
 
     return match_feats
 
@@ -261,7 +274,7 @@ val_matches = [
 
 if __name__ == '__main__':
 
-    k = 2   # k is the number of timesteps to be considered; if k=2, then consider t and t-1
+    k = 4   # k is the number of timesteps to be considered; if k=2, then consider t and t-1
     num_of_feats = 11
 
     train_feats = np.empty((0, num_of_feats*(k)+1), float)
@@ -287,4 +300,3 @@ if __name__ == '__main__':
 
     with open(val_pkl_p, 'wb') as pkl:
         pickle.dump(val_feats, pkl, protocol=pickle.HIGHEST_PROTOCOL)
-
